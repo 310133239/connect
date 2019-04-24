@@ -13,8 +13,8 @@
  * @private
  */
 
-var debug = require('debug')('connect:dispatcher');
-var EventEmitter = require('events').EventEmitter;
+var debug = require('debug')('connect:dispatcher');  // namespace 命名空间
+var EventEmitter = require('events').EventEmitter; // on emit 订阅函数
 var finalhandler = require('finalhandler');
 var http = require('http');
 var merge = require('utils-merge');
@@ -24,7 +24,7 @@ var parseUrl = require('parseurl');
  * Module exports.
  * @public
  */
-
+// 默认将 createServer 导出
 module.exports = createServer;
 
 /**
@@ -36,6 +36,7 @@ var env = process.env.NODE_ENV || 'development';
 var proto = {};
 
 /* istanbul ignore next */
+// 下一次轮询
 var defer = typeof setImmediate === 'function'
   ? setImmediate
   : function(fn){ process.nextTick(fn.bind.apply(fn, arguments)) }
@@ -47,10 +48,18 @@ var defer = typeof setImmediate === 'function'
  * @public
  */
 
+//  执行createServer的时候 默认导出一个函数，接管路由的函数
+/*
+  调用的时候
+  const connect = reqire('connect');
+  const app = connect(); // 返回的就是一个 app的函数;
+  // app => function
+  app.use(fn) or app.use(route, fn)
+*/
 function createServer() {
-  function app(req, res, next){ app.handle(req, res, next); }
-  merge(app, proto);
-  merge(app, EventEmitter.prototype);
+  function app(req, res, next){ app.handle(req, res, next); } //
+  merge(app, proto); // 合并方法
+  merge(app, EventEmitter.prototype); // 合并方法 node的原生方法
   app.route = '/';
   app.stack = [];
   return app;
@@ -72,17 +81,21 @@ function createServer() {
  * @return {Server} for chaining
  * @public
  */
-
+/*
+  use（route,fn）
+  use（fn） => use('/',fn)
+*/
 proto.use = function use(route, fn) {
   var handle = fn;
   var path = route;
 
   // default route to '/'
+  // 如果没有穿 path 只传了handle 默认 根路径
   if (typeof route !== 'string') {
     handle = route;
     path = '/';
   }
-
+  // 这个暂时不看
   // wrap sub-apps
   if (typeof handle.handle === 'function') {
     var server = handle;
@@ -96,14 +109,15 @@ proto.use = function use(route, fn) {
   if (handle instanceof http.Server) {
     handle = handle.listeners('request')[0];
   }
-
+  // 这个暂时不看
   // strip trailing slash
   if (path[path.length - 1] === '/') {
     path = path.slice(0, -1);
   }
-
+  // 这个暂时不看
   // add the middleware
   debug('use %s %s', path || '/', handle.name || 'anonymous');
+  // 推到一个数组里面以后调用
   this.stack.push({ route: path, handle: handle });
 
   return this;
@@ -144,9 +158,11 @@ proto.handle = function handle(req, res, out) {
     }
 
     // next callback
+    // 从0位开始取存起来的函数
     var layer = stack[index++];
 
     // all done
+    // 如果函数没有就认为全部执行完毕了。
     if (!layer) {
       defer(done, err);
       return;
@@ -232,11 +248,11 @@ function call(handle, route, err, req, res, next) {
   try {
     if (hasError && arity === 4) {
       // error-handling middleware
-      handle(err, req, res, next);
+      handle(err, req, res, next); // 错误的
       return;
     } else if (!hasError && arity < 4) {
       // request-handling middleware
-      handle(req, res, next);
+      handle(req, res, next); // 正常的
       return;
     }
   } catch (e) {
